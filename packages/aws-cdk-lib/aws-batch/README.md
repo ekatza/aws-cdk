@@ -279,6 +279,24 @@ Tags.of(tagCE).add('super', 'salamander');
 Unmanaged `ComputeEnvironment`s do not support `maxvCpus` or `minvCpus` because you must provision and manage the instances yourself;
 that is, Batch will not scale them up and down as needed.
 
+### Container Insights
+
+You can turn on [CloudWatch Container Insights](https://docs.aws.amazon.com/batch/latest/userguide/cloudwatch-container-insights.html)
+for the Amazon ECS cluster that backs a `ManagedEc2EcsComputeEnvironment`, `FargateComputeEnvironment`, or `UnmanagedComputeEnvironment`:
+
+```ts
+declare const vpc: ec2.IVpc;
+
+new batch.FargateComputeEnvironment(this, 'CEWithContainerInsights', {
+  vpc,
+  containerInsights: batch.ContainerInsights.ENHANCED,
+});
+```
+
+`ContainerInsights.ENABLED` collects standard CPU, memory, disk, and network utilization metrics;
+`ContainerInsights.ENHANCED` adds per-task observability metrics. Once set, `containerInsights` can't be reverted to unset;
+use `ContainerInsights.DISABLED` to turn Container Insights off.
+
 ### Sharing a ComputeEnvironment between multiple JobQueues
 
 Multiple `JobQueue`s can share the same `ComputeEnvironment`.

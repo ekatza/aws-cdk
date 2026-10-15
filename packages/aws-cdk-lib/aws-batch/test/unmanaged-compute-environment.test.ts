@@ -1,9 +1,9 @@
 import { capitalizePropertyNames } from './utils';
-import { Template } from '../../assertions';
+import { Match, Template } from '../../assertions';
 import { Role, ServicePrincipal } from '../../aws-iam';
-import { Stack } from '../../core';
+import { Stack, Validations } from '../../core';
 import type { CfnComputeEnvironmentProps } from '../lib/';
-import { UnmanagedComputeEnvironment } from '../lib/';
+import { ContainerInsights, UnmanagedComputeEnvironment } from '../lib/';
 
 const defaultExpectedProps: CfnComputeEnvironmentProps = {
   type: 'unmanaged',
@@ -101,5 +101,52 @@ test('respects unmanagedvCpus', () => {
   Template.fromStack(stack).hasResourceProperties('AWS::Batch::ComputeEnvironment', {
     ...pascalCaseExpectedProps,
     UnmanagedvCpus: 256,
+  });
+});
+
+test('does not set EcsSettings by default', () => {
+  // GIVEN
+  stack = new Stack();
+
+  // WHEN
+  new UnmanagedComputeEnvironment(stack, 'MyCE');
+
+  // THEN
+  Template.fromStack(stack).hasResourceProperties('AWS::Batch::ComputeEnvironment', {
+    EcsSettings: Match.absent(),
+  });
+});
+
+test.each([
+  [ContainerInsights.ENABLED, 'ENABLED'],
+  [ContainerInsights.ENHANCED, 'ENHANCED'],
+  [ContainerInsights.DISABLED, 'DISABLED'],
+])('renders containerInsights %p as EcsSettings.ContainerInsights %s', (containerInsights, expected) => {
+  // GIVEN
+  stack = new Stack();
+
+  // WHEN
+  new UnmanagedComputeEnvironment(stack, 'MyCE', { containerInsights });
+
+  // THEN
+  Template.fromStack(stack).hasResourceProperties('AWS::Batch::ComputeEnvironment', {
+    EcsSettings: { ContainerInsights: expected },
+  });
+});
+
+test('renders a custom containerInsights value from ContainerInsights.of()', () => {
+  // GIVEN
+  stack = new Stack();
+  Validations.of(stack).acknowledge({
+    id: 'CloudFormation-Validate::W3030',
+    reason: 'value not yet in the CloudFormation spec',
+  });
+
+  // WHEN
+  new UnmanagedComputeEnvironment(stack, 'MyCE', { containerInsights: ContainerInsights.of('SOME_NEW_MODE') });
+
+  // THEN
+  Template.fromStack(stack).hasResourceProperties('AWS::Batch::ComputeEnvironment', {
+    EcsSettings: { ContainerInsights: 'SOME_NEW_MODE' },
   });
 });

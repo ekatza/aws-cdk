@@ -1,7 +1,8 @@
 import type { Construct, IConstruct } from 'constructs';
 import { CfnComputeEnvironment } from './batch.generated';
-import type { IComputeEnvironment, ComputeEnvironmentProps } from './compute-environment-base';
+import type { IComputeEnvironment, ComputeEnvironmentProps, ContainerInsights } from './compute-environment-base';
 import { ComputeEnvironmentBase } from './compute-environment-base';
+import { applyContainerInsights } from './private/container-insights';
 import * as ec2 from '../../aws-ec2';
 import type * as eks from '../../aws-eks';
 import * as iam from '../../aws-iam';
@@ -654,6 +655,17 @@ export interface ManagedEc2EcsComputeEnvironmentProps extends ManagedEc2ComputeE
    * @default - no placement group
    */
   readonly placementGroup?: ec2.IPlacementGroupRef;
+
+  /**
+   * The CloudWatch Container Insights mode for the Amazon ECS cluster
+   * that backs this ComputeEnvironment.
+   *
+   * After you set this property, you can't revert it to the default (unset) state.
+   *
+   * @see https://docs.aws.amazon.com/batch/latest/userguide/cloudwatch-container-insights.html
+   * @default - Container Insights is not configured for this ComputeEnvironment
+   */
+  readonly containerInsights?: ContainerInsights;
 }
 
 /**
@@ -870,6 +882,7 @@ export class ManagedEc2EcsComputeEnvironment extends ManagedEc2ComputeEnvironmen
       },
     });
 
+    applyContainerInsights(this, props.containerInsights);
     this.node.addValidation({ validate: () => validateInstances(this.instanceTypes, this.instanceClasses, props.useOptimalInstanceClasses) });
   }
 
@@ -1227,7 +1240,18 @@ export interface IFargateComputeEnvironment extends IManagedComputeEnvironment {
 /**
  * Props for a FargateComputeEnvironment
  */
-export interface FargateComputeEnvironmentProps extends ManagedComputeEnvironmentProps { }
+export interface FargateComputeEnvironmentProps extends ManagedComputeEnvironmentProps {
+  /**
+   * The CloudWatch Container Insights mode for the Amazon ECS cluster
+   * that backs this ComputeEnvironment.
+   *
+   * After you set this property, you can't revert it to the default (unset) state.
+   *
+   * @see https://docs.aws.amazon.com/batch/latest/userguide/cloudwatch-container-insights.html
+   * @default - Container Insights is not configured for this ComputeEnvironment
+   */
+  readonly containerInsights?: ContainerInsights;
+}
 
 /**
  * A ManagedComputeEnvironment that uses ECS orchestration on Fargate instances.
@@ -1295,6 +1319,7 @@ export class FargateComputeEnvironment extends ManagedComputeEnvironmentBase imp
         type: this.spot ? 'FARGATE_SPOT' : 'FARGATE',
       },
     });
+    applyContainerInsights(this, props.containerInsights);
   }
 }
 

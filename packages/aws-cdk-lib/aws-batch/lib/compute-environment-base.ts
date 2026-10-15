@@ -84,6 +84,47 @@ export interface ComputeEnvironmentProps {
 }
 
 /**
+ * The CloudWatch Container Insights mode for the Amazon ECS cluster
+ * that backs a ComputeEnvironment.
+ *
+ * @see https://docs.aws.amazon.com/batch/latest/userguide/cloudwatch-container-insights.html
+ */
+export class ContainerInsights {
+  /**
+   * Standard Container Insights: CPU, memory, disk, and network utilization metrics
+   */
+  public static readonly ENABLED = new ContainerInsights('ENABLED');
+
+  /**
+   * Enhanced Container Insights: the standard metrics plus additional per-task observability metrics
+   */
+  public static readonly ENHANCED = new ContainerInsights('ENHANCED');
+
+  /**
+   * Container Insights turned off
+   */
+  public static readonly DISABLED = new ContainerInsights('DISABLED');
+
+  /**
+   * A Container Insights mode not yet modeled by this class
+   *
+   * Values not yet in the CloudFormation resource specification produce a
+   * `CloudFormation-Validate::W3030` synthesis warning, which you can acknowledge
+   * with `Validations.of(scope).acknowledge()`.
+   *
+   * @param value the value passed to `EcsSettings.ContainerInsights`
+   */
+  public static of(value: string): ContainerInsights {
+    return new ContainerInsights(value);
+  }
+
+  /**
+   * @param value the value passed to `EcsSettings.ContainerInsights`
+   */
+  protected constructor(public readonly value: string) { }
+}
+
+/**
  * Abstract base class for ComputeEnvironments
  *
  * @internal

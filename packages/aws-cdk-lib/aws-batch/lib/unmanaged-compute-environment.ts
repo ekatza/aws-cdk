@@ -1,7 +1,8 @@
 import type { Construct } from 'constructs';
 import { CfnComputeEnvironment } from './batch.generated';
-import type { IComputeEnvironment, ComputeEnvironmentProps } from './compute-environment-base';
+import type { IComputeEnvironment, ComputeEnvironmentProps, ContainerInsights } from './compute-environment-base';
 import { ComputeEnvironmentBase } from './compute-environment-base';
+import { applyContainerInsights } from './private/container-insights';
 import { ManagedPolicy, Role, ServicePrincipal } from '../../aws-iam';
 import { ArnFormat, Stack } from '../../core';
 import { memoizedGetter } from '../../core/lib/helpers-internal';
@@ -38,6 +39,17 @@ export interface UnmanagedComputeEnvironmentProps extends ComputeEnvironmentProp
    * @default 0
    */
   readonly unmanagedvCpus?: number;
+
+  /**
+   * The CloudWatch Container Insights mode for the Amazon ECS cluster
+   * that backs this ComputeEnvironment.
+   *
+   * After you set this property, you can't revert it to the default (unset) state.
+   *
+   * @see https://docs.aws.amazon.com/batch/latest/userguide/cloudwatch-container-insights.html
+   * @default - Container Insights is not configured for this ComputeEnvironment
+   */
+  readonly containerInsights?: ContainerInsights;
 }
 
 /**
@@ -106,5 +118,6 @@ export class UnmanagedComputeEnvironment extends ComputeEnvironmentBase implemen
         assumedBy: new ServicePrincipal('batch.amazonaws.com'),
       }).roleArn,
     });
+    applyContainerInsights(this, props?.containerInsights);
   }
 }

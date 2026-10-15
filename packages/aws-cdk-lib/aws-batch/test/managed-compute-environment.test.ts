@@ -7,7 +7,7 @@ import { ArnPrincipal, Role, ServicePrincipal } from '../../aws-iam';
 import { Stack, Duration, Tags, CfnParameter, App, Validations } from '../../core';
 import * as cxapi from '../../cx-api';
 import type { CfnComputeEnvironmentProps, ManagedEc2EcsComputeEnvironmentProps, ManagedEc2EksComputeEnvironmentProps } from '../lib';
-import { AllocationStrategy, ManagedEc2EcsComputeEnvironment, ManagedEc2EksComputeEnvironment, FargateComputeEnvironment, EcsMachineImageType, EksMachineImageType, DefaultInstanceClass } from '../lib';
+import { AllocationStrategy, ManagedEc2EcsComputeEnvironment, ManagedEc2EksComputeEnvironment, FargateComputeEnvironment, EcsMachineImageType, EksMachineImageType, DefaultInstanceClass, ContainerInsights } from '../lib';
 
 const defaultExpectedEcsProps: CfnComputeEnvironmentProps = {
   type: 'managed',
@@ -1470,5 +1470,57 @@ describe('FargateComputeEnvironment', () => {
 
     // THEN
     expect(ce.computeEnvironmentArn).toEqual('arn:aws:batch:us-east-1:123456789012:compute-environment/ce-name');
+  });
+});
+
+describe.each([
+  ['ManagedEc2EcsComputeEnvironment', (scope: Stack, ceVpc: ec2.IVpc, containerInsights?: ContainerInsights) =>
+    new ManagedEc2EcsComputeEnvironment(scope, 'MyCE', { vpc: ceVpc, containerInsights })],
+  ['FargateComputeEnvironment', (scope: Stack, ceVpc: ec2.IVpc, containerInsights?: ContainerInsights) =>
+    new FargateComputeEnvironment(scope, 'MyCE', { vpc: ceVpc, containerInsights })],
+])('%s containerInsights', (_name, createComputeEnvironment) => {
+  beforeEach(() => {
+    stack = new Stack();
+    vpc = new ec2.Vpc(stack, 'vpc');
+  });
+
+  test('does not set EcsSettings by default', () => {
+    // WHEN
+    createComputeEnvironment(stack, vpc);
+
+    // THEN
+    Template.fromStack(stack).hasResourceProperties('AWS::Batch::ComputeEnvironment', {
+      EcsSettings: Match.absent(),
+    });
+  });
+
+  test.each([
+    [ContainerInsights.ENABLED, 'ENABLED'],
+    [ContainerInsights.ENHANCED, 'ENHANCED'],
+    [ContainerInsights.DISABLED, 'DISABLED'],
+  ])('renders %p as EcsSettings.ContainerInsights %s', (containerInsights, expected) => {
+    // WHEN
+    createComputeEnvironment(stack, vpc, containerInsights);
+
+    // THEN
+    Template.fromStack(stack).hasResourceProperties('AWS::Batch::ComputeEnvironment', {
+      EcsSettings: { ContainerInsights: expected },
+    });
+  });
+
+  test('renders a custom value from ContainerInsights.of()', () => {
+    // GIVEN
+    Validations.of(stack).acknowledge({
+      id: 'CloudFormation-Validate::W3030',
+      reason: 'value not yet in the CloudFormation spec',
+    });
+
+    // WHEN
+    createComputeEnvironment(stack, vpc, ContainerInsights.of('SOME_NEW_MODE'));
+
+    // THEN
+    Template.fromStack(stack).hasResourceProperties('AWS::Batch::ComputeEnvironment', {
+      EcsSettings: { ContainerInsights: 'SOME_NEW_MODE' },
+    });
   });
 });
